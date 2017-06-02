@@ -183,6 +183,13 @@ export default async function createCompiler (dir, { buildId, dev = false, quiet
     mainBabelOptions.presets.push(require.resolve('./babel/preset'))
   }
 
+  const reactHotloaderExcludes = [/node_modules/]
+  if (config.reactHotloaderExcludes) {
+    config.reactHotloaderExcludes.forEach(function (exclude) {
+      reactHotloaderExcludes.push(exclude)
+    })
+  }
+
   const rules = (dev ? [{
     test: /\.js(\?[^?]*)?$/,
     loader: 'hot-self-accept-loader',
@@ -193,7 +200,7 @@ export default async function createCompiler (dir, { buildId, dev = false, quiet
   }, {
     test: /\.js(\?[^?]*)?$/,
     loader: 'react-hot-loader/webpack',
-    exclude: /node_modules/
+    exclude: reactHotloaderExcludes
   }] : [])
   .concat([{
     test: /\.json$/,
@@ -202,9 +209,9 @@ export default async function createCompiler (dir, { buildId, dev = false, quiet
     test: /\.(js|json)(\?[^?]*)?$/,
     loader: 'emit-file-loader',
     include: [dir, nextPagesDir],
-    exclude (str) {
+    exclude: [function (str) {
       return /node_modules/.test(str) && str.indexOf(nextPagesDir) !== 0
-    },
+    }, ...reactHotloaderExcludes],
     options: {
       name: 'dist/[path][name].[ext]',
       // By default, our babel config does not transpile ES2015 module syntax because
@@ -272,11 +279,11 @@ export default async function createCompiler (dir, { buildId, dev = false, quiet
   }, {
     loader: 'babel-loader',
     include: nextPagesDir,
-    exclude (str) {
+    exclude: [function (str) {
       return /node_modules/.test(str) && str.indexOf(nextPagesDir) !== 0
-    },
+    }, ...reactHotloaderExcludes],
     options: {
-      babelrc: false,
+      babelrc: true,
       cacheDirectory: true,
       presets: [require.resolve('./babel/preset')]
     }
@@ -284,9 +291,7 @@ export default async function createCompiler (dir, { buildId, dev = false, quiet
     test: /\.js(\?[^?]*)?$/,
     loader: 'babel-loader',
     include: [dir],
-    exclude (str) {
-      return /node_modules/.test(str)
-    },
+    exclude: reactHotloaderExcludes,
     options: mainBabelOptions
   }])
 
